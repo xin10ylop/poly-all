@@ -41,7 +41,8 @@ This is a $150–260/day strategy on ~$2–4k of capital. It starts small and gr
 | 8 | UMA "proposed" resolution lag | live scan | only illiquid props; no size |
 | 9 | Earthquake weekly counts (USGS) | live check | occasional mispricing; tiny markets ($10–30k) → future add-on |
 | 10 | NegRisk / binary arbitrage | subagent live scanner | see `research/arb` (speed-dependent) |
-| 11 | Crypto thresholds vs options-implied | subagent (Deribit IV, spot) | see `research/crypto` |
+| 11 | Crypto thresholds vs options-implied | point-in-time Deribit smiles from 777k option trades, 1.12M Polymarket prints | **no edge**: market Brier 5.19 vs Deribit 5.26; taker rules −0 to −3.5c/share; makers adversely selected (`research/crypto/REPORT.md`) |
+| 13 | Weather stacked model as **maker** (resting bids) | same data, fill only when a real seller trades through | **strongly negative** (−18% to −24%): resting orders get picked off by informed sellers → taker-only |
 | 12 | Jev structural tags → mispriced segments | subagent (Jev tags on resolved markets, executable prices) | see `research/jev_tags` |
 
 Leaderboard study (`research/wallets/REPORT.md`): the consistent small wallets trade many small tickets in niche
