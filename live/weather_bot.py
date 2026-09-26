@@ -27,6 +27,7 @@ import rules_guard
 
 EDGE = float(os.environ.get('EDGE', 0.15)); MAXUSD = float(os.environ.get('MAXUSD', 50)); LOOP = 60
 FEE = 0.05; PMIN, PMAX = 0.02, 0.98
+MAX_AGE = float(os.environ.get('MAX_AGE', 60))   # minutes since last print
 OUT = os.path.join(ROOT, 'data', 'live', 'weather'); os.makedirs(OUT, exist_ok=True)
 NOW = lambda: time.time()
 models = {k: pickle.load(open(os.path.join(ROOT, f'data/nowcast_{k}.pkl'), 'rb')) for k in ('high', 'low')}
@@ -83,19 +84,44 @@ def universe():
 
 
 METAR = {}
+BACKFILLED = set()
+
+
+def _ingest(d):
+    for x in d:
+        if x.get('temp') is None:
+            continue
+        METAR.setdefault(x['icaoId'], {})[int(x['obsTime'])] = float(x['temp'])
 
 
 def update_metar(icaos):
+    """aviationweather.gov caps a response at 400 obs, so: backfill 40h per station individually once, then poll
+    recent obs in small batches (20 stations x 3h stays far below the cap)."""
     ids = sorted(set(icaos))
-    for i in range(0, len(ids), 40):
+    for icao in ids:
+        if icao not in BACKFILLED:
+            try:
+                _ingest(get('https://aviationweather.gov/api/data/metar', {'ids': icao, 'format': 'json', 'hours': 40}))
+                BACKFILLED.add(icao)
+            except Exception:
+                pass
+    for i in range(0, len(ids), 20):
         try:
-            d = get('https://aviationweather.gov/api/data/metar', {'ids': ','.join(ids[i:i + 40]), 'format': 'json', 'hours': 40})
+            _ingest(get('https://aviationweather.gov/api/data/metar', {'ids': ','.join(ids[i:i + 20]), 'format': 'json', 'hours': 3}))
         except Exception:
             continue
-        for x in d:
-            if x.get('temp') is None:
-                continue
-            METAR.setdefault(x['icaoId'], {})[int(x['obsTime'])] = float(x['temp'])
+
+
+def day_coverage_ok(icao, day_start, now):
+    """Require observations covering the local day so far: first obs within 90 min of day start and no gap > 3h."""
+    ts = sorted(t for t in METAR.get(icao, {}) if day_start - 3600 <= t <= now)
+    if not ts or icao not in BACKFILLED:
+        return False
+    day = [t for t in ts if t >= day_start]
+    if not day or day[0] - day_start > 5400:
+        return False
+    gaps = [b - a for a, b in zip(day, day[1:])] + [now - day[-1]]
+    return max(gaps) <= 3 * 3600
 
 
 def metar_frame(icao, unit):
@@ -151,7 +177,7 @@ def step(U):
     rows, meta = [], []
     for u in U:
         mf = metar_frame(u['icao'], u['unit'])
-        if mf is None:
+        if mf is None or not day_coverage_ok(u['icao'], u['day_start'], now):
             continue
         f = features_at(mf, u['city'], u['kind'], now)
         if f is None:
@@ -183,8 +209,11 @@ def step(U):
         bids, asks = BK.get(b['yes'], ([], []))
         ask_yes = asks[0] if asks else None
         ask_no = (1 - bids[0][0], bids[0][1]) if bids else None
-        log('signals.jsonl', dict(ts=now, slug=u['slug'], bucket=b['title'], p=p, q=row['q'], ref=row['ref'],
-                                  ask_yes=ask_yes, ask_no=ask_no, hr=f['hr'], run=f['run'], src=u['src']))
+        log('signals.jsonl', dict(ts=now, slug=u['slug'], cid=b['cid'], bucket=b['title'], p=p, q=row['q'], ref=row['ref'],
+                                  age=row['age'], n1h=row['n1h'], ask_yes=ask_yes, ask_no=ask_no, hr=f['hr'],
+                                  run=f['run'], src=u['src']))
+        if not (row['age'] <= MAX_AGE):   # validated regime: 96% of backtest fills had a print within the last hour
+            continue
         for side, a in (('YES', ask_yes), ('NO', ask_no)):
             if a is None:
                 continue
@@ -204,7 +233,7 @@ def step(U):
                 state['spent'][key] = spent + shares * px
                 pos = dict(ts=now, slug=u['slug'], city=u['city'], kind=u['kind'], cid=b['cid'], bucket=b['title'],
                            side=side, px=px, shares=shares, fee=FEE * px * (1 - px) * shares, p=p, fair=fair,
-                           hr=f['hr'], src=u['src'])
+                           hr=f['hr'], src=u['src'], age=row['age'], model=os.environ.get('STACK_MODEL', 'prod'), v=2)
                 state['positions'].append(pos); log('fills.jsonl', pos)
                 print(time.strftime('%H:%M:%S'), 'PAPER BUY', side, u['slug'][:45], b['title'],
                       'px %.3f fair %.3f $%.1f' % (px, fair, shares * px), flush=True)

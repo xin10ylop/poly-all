@@ -118,6 +118,27 @@ for about 30% more capacity and is not yet in the live bot.
 
 **Maker variant is negative.** Resting bids at fair − edge get filled only by better-informed sellers, for −18% to −24%. Taker-only is correct.
 
+
+### Live paper-trading log
+- **2026-09-26 05:20 UTC, bug found and fixed.** The aviationweather.gov METAR API returns at most 400 observations per
+  request. The first live bot fetched 40 stations × 40h in one call, so it only saw the last ~5 hours per station. That
+  made its running daily extremes wrong: for example, the NYC low read 68°F when the true low was 58°F. Its first 39
+  paper fills (00:57–05:15 UTC) are therefore **invalid** and archived in `data/live/weather/v1_buggy/`. Several were
+  losing NO bets against the correct bucket.
+- The fix:
+  - Each station is backfilled individually, then polled in small batches.
+  - A coverage guard skips any event whose observations don't cover the local day so far.
+  - Independent verification on 12 random events: 0 mismatches.
+- The backtests are **not** affected; they use the complete IEM archive.
+- **Other parity changes made so live matches the validated regime:**
+  - Trade all hours, matching the backtest (no nowcast-informativeness gate).
+  - Only trade markets with a print in the last 60 minutes; 96% of backtest fills were in that regime.
+  - Use a production model retrained through Sep 25.
+- **Book vs print fills.** For live fills where later prints existed, the prints were on average about 5¢ cheaper than
+  the displayed ask the bot paid. The print-based backtest does not flatter fill prices; if anything it's the other way.
+- **Infrastructure caveat.** This cloud container is reclaimed when the session is idle, which stops the bot.
+  `live/ensure_running.sh` restarts it; for continuous operation run the bot on your own always-on machine or VPS.
+
 ## 3. Jev + LLM
 
 - **Jev as a rules guard** (`live/rules_guard.py`). Before trading an event, Jev answers typed questions about its rules
