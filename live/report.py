@@ -25,3 +25,23 @@ if len(S):
 open_ = F[~F.set_index(['cid', 'side', 'ts']).index.isin(S.set_index(['cid', 'side', 'ts']).index)] if len(S) and len(F) else F
 if len(open_):
     print(f"open positions {len(open_)}  exposure ${(open_.shares * open_.px).sum():.0f}")
+
+# mark-to-market of open positions at current book mid (early read before settlement)
+if len(open_):
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+    from polylib import get, GAMMA, jl
+    cids = list(open_.cid.unique()); mids = {}
+    for i in range(0, len(cids), 50):
+        for m in get(f'{GAMMA}/markets', {'condition_ids': cids[i:i + 50], 'limit': 50}):
+            try:
+                bb, ba = float(m.get('bestBid') or 0), float(m.get('bestAsk') or 1)
+                mids[m['conditionId']] = (bb + ba) / 2
+            except Exception:
+                pass
+    o = open_.copy()
+    o['mid_yes'] = o.cid.map(mids)
+    o['mark'] = np.where(o.side == 'YES', o.mid_yes, 1 - o.mid_yes)
+    o['mtm'] = o.shares * (o['mark'] - o.px) - o.fee
+    print(f"open MTM ${o.mtm.sum():.2f} on ${(o.shares * o.px).sum():.0f}  ({o.mtm.sum() / (o.shares * o.px).sum():+.1%})")
+    g = o.groupby(['slug', 'bucket', 'side']).agg(cost=('px', lambda s: 0), mtm=('mtm', 'sum')).mtm.sort_values()
+    print('worst:', g.head(3).round(2).to_dict()); print('best:', g.tail(3).round(2).to_dict())
