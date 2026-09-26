@@ -40,7 +40,7 @@ This is a $150–260/day strategy on ~$2–4k of capital. It starts small and gr
 | 7 | "Buy NO on longshots" (favourite–longshot bias) | 134k closed events, 12h histories | illusion on midpoints; **vanishes in liquid markets** (vol > $50k) |
 | 8 | UMA "proposed" resolution lag | live scan | only illiquid props; no size |
 | 9 | Earthquake weekly counts (USGS) | live check | occasional mispricing; tiny markets ($10–30k) → future add-on |
-| 10 | NegRisk / binary arbitrage | subagent live scanner | see `research/arb` (speed-dependent) |
+| 10 | NegRisk / binary / nested-ladder arbitrage | 89-min full-universe scan (~215k markets), 1.5 s hot poll, in-play probe | **no executable arb**: binary impossible (unified book); negRisk baskets fee-killed (~2% drag); leftovers are dust or sub-T-bill yield; in-play windows last <10 s (`research/arb/REPORT.md`) |
 | 11 | Crypto thresholds vs options-implied | point-in-time Deribit smiles from 777k option trades, 1.12M Polymarket prints | **no edge**: market Brier 5.19 vs Deribit 5.26; taker rules −0 to −3.5c/share; makers adversely selected (`research/crypto/REPORT.md`) |
 | 13 | Weather stacked model as **maker** (resting bids) | same data, fill only when a real seller trades through | **strongly negative** (−18% to −24%): resting orders get picked off by informed sellers → taker-only |
 | 12 | Jev structural tags → mispriced segments | 31k resolved markets tagged by Jev (11 questions, $0.79), executable VWAP prices, event-clustered stats, permutation nulls, leakage probe | **no robust edge**: tags find YES ~1–2¢ rich, less than spread+fee; decays over 2026 (`research/jev_tags/REPORT.md`) |
