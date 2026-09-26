@@ -124,6 +124,17 @@ def day_coverage_ok(icao, day_start, now):
     return max(gaps) <= 3 * 3600
 
 
+def obs_overdue(icao, now):
+    """True if the station's usual reporting interval has elapsed since its last observation we hold, i.e. a newer
+    METAR is probably out (the market may already know it while our feed has not delivered it yet)."""
+    ts = sorted(METAR.get(icao, {}))
+    if len(ts) < 3:
+        return True
+    gaps = [b - a for a, b in zip(ts[-7:], ts[-6:])]
+    interval = sorted(gaps)[len(gaps) // 2]
+    return now - ts[-1] >= interval - 60
+
+
 def metar_frame(icao, unit):
     obs = METAR.get(icao, {})
     if not obs:
@@ -219,6 +230,11 @@ def step(U):
                 continue
             px, depth = a
             fair = p if side == 'YES' else 1 - p
+            ref_side = row['ref'] if side == 'YES' else 1 - row['ref']
+            if ref_side - px > 0.5 and fair - px >= EDGE and obs_overdue(u['icao'], now):
+                # price far better than the last trade while a newer METAR is probably out -> likely stale data
+                log('guard_skip.jsonl', dict(ts=now, slug=u['slug'], bucket=b['title'], side=side, px=px, fair=fair, ref=row['ref']))
+                continue
             key = f"{b['cid']}|{side}"
             spent = state['spent'].get(key, 0.0)
             if fair - px >= EDGE and PMIN <= px <= PMAX and spent < MAXUSD:

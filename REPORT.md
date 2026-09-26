@@ -143,6 +143,15 @@ for about 30% more capacity and is not yet in the live bot.
   - Excluding it: **+$39 on $119 (+32%)**.
   - Losers: Guangzhou 34/35°C (the afternoon warmed one more degree than the model expected), Shanghai low, Shenzhen, Tokyo low.
   - Far too few events to judge (backtest expectation +8.5% on turnover). Keep accumulating.
+- **2026-09-26 19:00 UTC: stale-data guard added.**
+  - The trigger was São Paulo 33°C: the bot bought NO at 0.06 two seconds after the market repriced on a new METAR
+    (33°C) that our feed had not yet delivered. It is a near-certain paper loss of ~$23 and is kept in the record.
+  - A blanket "skip huge disagreements" rule is NOT supported by the backtest: edges > 0.6 returned +45% there. Neither
+    is a blanket freshness block: stale-at-fill trades returned +9.3%.
+  - So the guard is narrow. It skips only when **both** hold:
+    - the price is > 50 points better than the last trade;
+    - the station's reporting interval has elapsed since our last observation (a newer METAR is probably out).
+  - Skips are logged to `guard_skip.jsonl`. Upper-bound cost is about 9% of backtest profit; in practice much less.
 - **Infrastructure caveat.** This cloud container is reclaimed when the session is idle, which stops the bot.
   `live/ensure_running.sh` restarts it; for continuous operation run the bot on your own always-on machine or VPS.
 
