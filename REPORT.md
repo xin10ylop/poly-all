@@ -94,6 +94,30 @@ Both halves of the test period are positive for both kinds:
 - highs: +9.5% / +4.6%
 - lows: +30% / +27%
 
+
+### Rolling retrain (production cadence: retrain every ~2 weeks on all data to date, trade the next window)
+
+| train through | trade window | return on turnover | $/day | positive days | Brier market → model |
+|---|---|---|---|---|---|
+| Aug 14 | Aug 15 – Aug 31 | +8.5% | 234 | 53% | 0.0307 → 0.0297 |
+| Aug 31 | Sep 1 – Sep 14 | **+10.6%** | 238 | **93%** | 0.0307 → 0.0269 |
+| Sep 14 | Sep 15 – Sep 25 | +6.0% | 122 | 73% | 0.0335 → 0.0287 |
+| **all folds** | **42 days** | **+8.6%** on $101k | **~206** | | model's Brier advantage grows with training data |
+
+Weekly P&L in the Aug 1 – Sep 25 walk-forward was positive in 9 of 9 weeks.
+
+The early-morning trades are also profitable (+9.8%), when the nowcast is uninformative (P(D≥6) ≥ 1%). There the model
+exploits the market's bucket-pricing structure: stale last prints, overround, and edge buckets. The live bot therefore
+trades all hours, exactly like the backtest. It uses a production model retrained on all data through Sep 25
+(`research/weather/train_prod.py`).
+
+**Day-ahead add-on** (`research/weather/stack_prev.py`). Trades buckets in the 30h before the observation day, using
+market structure plus yesterday's observed extreme. Out of sample it returned +8.0% on turnover, $65/day, 66% positive days (positive in
+both halves). Its overall Brier does not beat the market (0.0620 vs 0.0613); only large disagreements pay. It is a candidate
+for about 30% more capacity and is not yet in the live bot.
+
+**Maker variant is negative.** Resting bids at fair − edge get filled only by better-informed sellers, for −18% to −24%. Taker-only is correct.
+
 ## 3. Jev + LLM
 
 - **Jev as a rules guard** (`live/rules_guard.py`). Before trading an event, Jev answers typed questions about its rules

@@ -120,7 +120,7 @@ def update_prints(cids):
             continue
         for x in r:
             p = float(x['price']); pyes = p if x['outcomeIndex'] == 0 else 1 - p
-            PRINTS.setdefault(x['conditionId'], {})[(x['timestamp'], x['transactionHash'], x['asset'])] = pyes
+            PRINTS.setdefault(x['conditionId'], {})[(x['timestamp'], x['transactionHash'], x['asset'], x['price'], x['size'], x['side'])] = pyes
 
 
 def market_feats(cid, now):
@@ -158,8 +158,7 @@ def step(U):
             continue
         F = prep(pd.DataFrame([f]))
         P = models[u['kind']].predict_proba(F[FEATS])
-        if P[0, KMAX] >= 0.01:
-            continue
+        # no tail gate: the stacked model was trained on all hours with `tail` as a feature (matches bt_stack.py)
         run = f['run'] if u['kind'] == 'high' else -f['run']
         rngs = [b['rng'] for b in u['buckets']]
         Q = bucket_probs(P, np.array([run]), rngs, u['kind'])[0]

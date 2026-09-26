@@ -74,7 +74,7 @@ SF = ['hr', 'q', 'tail', 'ref', 'age', 'n1h', 'over', 'refn', 'dlo', 'dhi', 'gap
 def fit(df):
     df = df.assign(kindH=(df.kind == 'high').astype(int))
     tr = df[(df.date < SPLIT) & df.ref.notna()]
-    te = df[(df.date >= SPLIT) & df.ref.notna()]
+    te = df[(df.date >= SPLIT) & (df.date < os.environ.get('TEST_END', '2099-01-01')) & df.ref.notna()]
     clf = HistGradientBoostingClassifier(max_iter=400, learning_rate=0.05, max_leaf_nodes=31, min_samples_leaf=200,
                                          l2_regularization=1.0, random_state=0)
     clf.fit(tr[SF], tr.y)
