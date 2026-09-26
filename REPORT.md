@@ -43,7 +43,7 @@ This is a $150–260/day strategy on ~$2–4k of capital. It starts small and gr
 | 10 | NegRisk / binary arbitrage | subagent live scanner | see `research/arb` (speed-dependent) |
 | 11 | Crypto thresholds vs options-implied | point-in-time Deribit smiles from 777k option trades, 1.12M Polymarket prints | **no edge**: market Brier 5.19 vs Deribit 5.26; taker rules −0 to −3.5c/share; makers adversely selected (`research/crypto/REPORT.md`) |
 | 13 | Weather stacked model as **maker** (resting bids) | same data, fill only when a real seller trades through | **strongly negative** (−18% to −24%): resting orders get picked off by informed sellers → taker-only |
-| 12 | Jev structural tags → mispriced segments | subagent (Jev tags on resolved markets, executable prices) | see `research/jev_tags` |
+| 12 | Jev structural tags → mispriced segments | 31k resolved markets tagged by Jev (11 questions, $0.79), executable VWAP prices, event-clustered stats, permutation nulls, leakage probe | **no robust edge**: tags find YES ~1–2¢ rich, less than spread+fee; decays over 2026 (`research/jev_tags/REPORT.md`) |
 
 Leaderboard study (`research/wallets/REPORT.md`): the consistent small wallets trade many small tickets in niche
 data-driven markets. The two families that small traders can replicate without speed are Asian-hours weather nowcasting
