@@ -11,3 +11,8 @@ if ! alive data/live/weather/bot.pid; then
   nohup python3 live/weather_bot.py >> data/live/weather/bot.log 2>&1 &
   echo $! > data/live/weather/bot.pid; echo "started bot $(cat data/live/weather/bot.pid)"
 fi
+mkdir -p data/live/sniper
+if ! alive data/live/sniper/sniper.pid; then
+  nohup python3 live/sniper.py >> data/live/sniper/sniper.log 2>&1 &
+  echo $! > data/live/sniper/sniper.pid; echo "started sniper $(cat data/live/sniper/sniper.pid)"
+fi

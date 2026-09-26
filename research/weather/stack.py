@@ -22,7 +22,7 @@ def build():
     for kind in ('high', 'low'):
         parts = [pd.read_parquet(f) for f in glob.glob(f'data/nowcast/{kind}_*.parquet')]
         F = prep(pd.concat([p[p.date >= '2026-06-20'] for p in parts], ignore_index=True))
-        F = F[(np.round(F.hr * 6) % 3 == 0)]
+        F = F[(np.round(F.hr * 6) % int(os.environ.get('GRID_STEPS', 3)) == 0) & (F.date >= os.environ.get('DATE_MIN', '0'))]
         P = models[kind].predict_proba(F[FEATS])
         F = F.assign(key=F.city + '|' + F.date, row=np.arange(len(F)))
         groups = dict(tuple(F.groupby('key')))
@@ -64,7 +64,7 @@ def build():
                     tr3=g.tr3.values.astype('float32'), unitF=g.unitF.values, doy=g.doy.values, nb=len(rngs),
                     y=float(b['won']), src=src.get(e['slug']))))
     df = pd.concat(rows, ignore_index=True)
-    df.to_parquet('data/stack_ds.parquet')
+    df.to_parquet(os.environ.get('DS_OUT', 'data/stack_ds.parquet'))
     return df
 
 

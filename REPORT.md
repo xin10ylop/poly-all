@@ -139,6 +139,41 @@ for about 30% more capacity and is not yet in the live bot.
 - **Infrastructure caveat.** This cloud container is reclaimed when the session is idle, which stops the bot.
   `live/ensure_running.sh` restarts it; for continuous operation run the bot on your own always-on machine or VPS.
 
+
+### Minute-level add-on: dead-bucket sniping (re-tested after clarifying that minute-level reaction is allowed)
+
+**Mechanism.** When a new METAR pushes the day's running max above a bucket (or the running min below it), that bucket
+can no longer win. We buy NO at the displayed price. Backtest (`research/weather/bt_dead.py`):
+- Fills only against real NO-buy prints that happened at least L minutes after the observation time.
+- 50% share of each print, $200 cap per bucket.
+- Actual outcomes, so any METAR/resolution mismatch is paid for.
+
+| reaction L after obs time | $/day (NOAA cities, Aug 24 – Sep 25) | positive days | return on turnover |
+|---|---|---|---|
+| 3 min | ~$68 | 97% | +3.0% |
+| 5 min | ~$26 | 97% | +2.4% |
+| 7 min | ~$20 | 97% | +2.7% |
+| 10 min | ~$7 | 97% | +1.3% |
+
+**Feed latency.** Median delay from observation time to availability, measured live:
+
+| source | median delay |
+|---|---|
+| NOAA tgftp | 4.0 min |
+| aviationweather API | 5.1 min |
+| aviationweather cache | 5.1 min |
+| IEM | 5.5 min |
+
+A tgftp poller realistically reacts in about 4–5 minutes, so expect **~$20–30/day**. The edge is nearly riskless and
+separate from the main strategy, whose 15-point edge threshold never fires at 95–99¢. It runs as a paper module in
+`live/sniper.py`.
+
+**Speed does not help the main strategy.** Re-tested on a 10-minute grid with 1–5 minute delays (walk-forward Aug 1 –
+Sep 25) it made $222–225/day, the same as the 30-minute grid ($227). The binding constraint is liquidity, not latency.
+
+**Combined backtest expectation:** main strategy ~$200–230/day plus sniping ~$20–30/day, i.e. **~$220–260/day** on
+~$3–5k capital. Conservative (stress-test) figure: ~$160/day.
+
 ## 3. Jev + LLM
 
 - **Jev as a rules guard** (`live/rules_guard.py`). Before trading an event, Jev answers typed questions about its rules
