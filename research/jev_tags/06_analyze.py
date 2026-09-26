@@ -18,6 +18,16 @@ T = pd.DataFrame(pickle.load(open(f'{D}/tags.pkl', 'rb'))).T
 T.index.name = 'mid'
 NOUL = ['sq_no', 'person', 'sched', 'num', 'mention', 'ent', 'ambig', 'conflict', 'govt']
 SCORE = ['drama', 'hype']
+if os.environ.get('PX') == 'first':      # entry = first >=$10 print after the horizon (decision-time price)
+    P['px'] = P.px_first
+    P = P[P.px.notna()].copy()
+    fr = P.mid.map(U.fee_rate).astype(float).fillna(0.04)
+    fe = P.mid.map(U.fee_exp).astype(float).fillna(1)
+    P['fee_c'] = fr * (P.px * (1 - P.px)) ** fe
+    P['cost'] = P.px + P.fee_c
+    P['pnl'] = P.win - P.cost
+    P['ret'] = P.pnl / P.cost
+    RET = 'ret'
 P = P[(P.px >= LO) & (P.px <= HI)].copy()
 P = P[P.mid.isin(T.index)].join(T[NOUL + SCORE].astype(float), on='mid')
 P = P.join(U[['created', 'ev_slug']], on='mid')
@@ -47,8 +57,10 @@ Lit['standalone'] = ~Lit['nr_group']
 dur = (P.end - P.created) / 86400
 Lit['short_life'] = dur <= 14
 Lit['long_life'] = dur > 90
-Lit['liquid'] = P.vol >= 50000
-Lit['illiquid'] = P.vol < 50000
+# NOTE: lifetime market volume is ex-post information (quiet markets resolve to the expected side), so liquidity
+# literals use the taker $ traded in the 12h entry window instead.
+Lit['liquid'] = P.wvol >= 1000
+Lit['illiquid'] = P.wvol < 1000
 LIT = pd.DataFrame(Lit)
 FAM = {k: k.replace('no_', '').replace('_hi', '').replace('_lo', '') for k in LIT}
 FAM.update(nr_group='grp', standalone='grp', short_life='life', long_life='life', liquid='liq', illiquid='liq')
@@ -130,7 +142,7 @@ if __name__ == '__main__':
     S = run_scan(P, LIT)
     S['excess_d'] = S['mean'] - S.base_d
     S['excess_v'] = S['mean_v'] - S.base_v
-    S.to_pickle(f'{D}/scan_{RET}.pkl')
+    S.to_pickle(f"{D}/scan_{os.environ.get('PX', 'vwap')}_{RET}.pkl")
     sel = S[(S.t >= 3) & (S['mean'] > 0) & (S.evs >= 20)].sort_values('t', ascending=False)
     print(f'\n=== C. Discovery scan: {len(S)} cells tested; {len(sel)} with disc t>=3, mean>0, >=20 events ===')
     print(sel[['side', 'bk', 'cell', 'n', 'evs', 'mean', 't', 'excess_d', 'n_v', 'evs_v', 'mean_v', 't_v', 'excess_v']]

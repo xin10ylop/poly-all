@@ -16,7 +16,7 @@ P = P.copy()
 P['lp'] = np.log(P.px / (1 - P.px))
 P['nr_group'] = (P.negRisk & (P.n_ev_mkts > 1)).astype(float)
 P['life'] = np.log1p((P.end - P.created) / 86400)
-P['lvol'] = np.log10(P.vol)
+P['lvol'] = np.log10(P.wvol + 1)   # window volume (lifetime vol would leak)
 P['h3'] = (P.hd == 3).astype(float); P['h7'] = (P.hd == 7).astype(float)
 META = ['nr_group', 'life', 'lvol', 'h3', 'h7']
 JEV = NOUL + SCORE
@@ -53,10 +53,35 @@ def evaluate(feats, side, margins=(0.0, 0.02, 0.05, 0.1)):
 
 if __name__ == '__main__':
     res = []
-    for name, feats in [('price+meta', META), ('price+meta+jev', META + JEV), ('price+jev', JEV)]:
+    for side in ['YES', 'NO']:
+        v = P[(P.side == side) & (P.split == 'val')]
+        c = v.px.clip(0.001, 0.999)
+        print(f'raw price as prob {side}: val logloss={-np.mean(v.win * np.log(c) + (1 - v.win) * np.log(1 - c)):.4f}')
+    for name, feats in [('price', ['h3', 'h7']), ('price+meta', META), ('price+meta+jev', META + JEV), ('price+jev', ['h3', 'h7'] + JEV)]:
         for side in ['YES', 'NO']:
             out, ll, v = evaluate(feats, side)
             print(f'{name:16s} {side:3s} val logloss={ll:.4f}  (entries {len(v)})')
             for o in out:
                 res.append(dict(model=name, **o))
     print(pd.DataFrame(res).to_string(index=False))
+
+    # permutation null for price+jev: give each event the Jev tags of a random donor event
+    rng = np.random.default_rng(1)
+    base = P.copy()
+    mk_by_ev = base.groupby('eid').mid.unique()
+    Tm = base.drop_duplicates('mid').set_index('mid')[JEV]
+    null = []
+    for it in range(int(os.environ.get('NPERM_MODEL', 20))):
+        evs = mk_by_ev.index.to_numpy()
+        donor = dict(zip(evs, rng.permutation(evs)))
+        mapping = {m: mk_by_ev[donor[e]][rng.integers(len(mk_by_ev[donor[e]]))] for e, ms in mk_by_ev.items() for m in ms}
+        P[JEV] = Tm.loc[base.mid.map(mapping)].to_numpy()
+        for side in ['YES', 'NO']:
+            out, ll, _ = evaluate(['h3', 'h7'] + JEV, side, margins=(0.0, 0.02))
+            for o in out:
+                null.append(dict(it=it, side=side, margin=o['margin'], mean=o['mean'], t=o['t'], ll=ll))
+    P[JEV] = base[JEV]
+    N = pd.DataFrame(null)
+    print('\npermutation null for price+jev (Jev tags shuffled across events):')
+    print(N.groupby(['side', 'margin']).agg(mean_ret=('mean', 'mean'), sd_ret=('mean', 'std'), t_mean=('t', 'mean'),
+                                              t_max=('t', 'max'), ll_mean=('ll', 'mean'), ll_min=('ll', 'min')).round(4).to_string())
