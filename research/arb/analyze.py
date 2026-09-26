@@ -10,7 +10,7 @@ import pandas as pd
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(HERE, '..', '..', 'data', 'arb')
-runs = sorted(d for d in glob.glob(f'{DATA}/run_*') if not d.endswith(('_ladder', '_hot')))
+runs = sorted(d for d in glob.glob(f'{DATA}/run_*') if not d.endswith(('_ladder', '_hot', '_inplay')))
 lruns = sorted(glob.glob(f'{DATA}/run_*_ladder'))
 hruns = sorted(glob.glob(f'{DATA}/run_*_hot'))
 RUNS = sys.argv[1].split(',') if len(sys.argv) > 1 else runs

@@ -30,7 +30,7 @@ FEE = 0.05; PMIN, PMAX = 0.02, 0.98
 OUT = os.path.join(ROOT, 'data', 'live', 'weather'); os.makedirs(OUT, exist_ok=True)
 NOW = lambda: time.time()
 models = {k: pickle.load(open(os.path.join(ROOT, f'data/nowcast_{k}.pkl'), 'rb')) for k in ('high', 'low')}
-stack = pickle.load(open(os.path.join(ROOT, 'data/stack_model.pkl'), 'rb'))
+stack = pickle.load(open(os.path.join(ROOT, os.environ.get('STACK_MODEL', 'data/stack_model_prod.pkl')), 'rb'))
 state_path = os.path.join(OUT, 'state.pkl')
 state = pickle.load(open(state_path, 'rb')) if os.path.exists(state_path) else {'positions': [], 'spent': {}, 'closed': []}
 
