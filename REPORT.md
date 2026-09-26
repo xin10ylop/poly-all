@@ -136,6 +136,13 @@ for about 30% more capacity and is not yet in the live bot.
   - Use a production model retrained through Sep 25.
 - **Book vs print fills.** For live fills where later prints existed, the prints were on average about 5¢ cheaper than
   the displayed ask the bot paid. The print-based backtest does not flatter fill prices; if anything it's the other way.
+- **2026-09-26 18:30 UTC: first live results (v2, after the METAR fix).**
+  - 25 of 57 paper fills are decided: closed, or oracle-proposed with the price pinned near 0/1. They cover 8 Asian events.
+  - Totals: cost $150, P&L **+$356 (+236%)**, win rate 52% at an average entry price of 0.39.
+  - One trade dominates: Chengdu high 28°C, YES bought at 0.09 right after the running max reached 28, made +$317.
+  - Excluding it: **+$39 on $119 (+32%)**.
+  - Losers: Guangzhou 34/35°C (the afternoon warmed one more degree than the model expected), Shanghai low, Shenzhen, Tokyo low.
+  - Far too few events to judge (backtest expectation +8.5% on turnover). Keep accumulating.
 - **Infrastructure caveat.** This cloud container is reclaimed when the session is idle, which stops the bot.
   `live/ensure_running.sh` restarts it; for continuous operation run the bot on your own always-on machine or VPS.
 
