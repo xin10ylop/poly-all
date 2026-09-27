@@ -221,6 +221,31 @@ Sep 25) it made $222–225/day, the same as the 30-minute grid ($227). The bindi
 **Combined backtest expectation:** main strategy ~$200–230/day plus sniping ~$20–30/day, i.e. **~$220–260/day** on
 ~$3–5k capital. Conservative (stress-test) figure: ~$160/day.
 
+
+### Small-bankroll feasibility ($100 start)
+`research/weather/bankroll_sim.py` replays the walk-forward fills chronologically, with:
+- **Cash lock-up:** each position holds its cash until resolution, about 3h after the local day ends.
+- **Minimum order:** 5 shares.
+- **Two sizing modes:** a fixed $3 per-bucket cap, or caps that grow with equity ($3 → $5 → $10 → $20 → $50).
+
+| start | sizing | after 56 days | lowest equity |
+|---|---|---|---|
+| $100 | fixed $3/bucket | ~$1,700 | $63 |
+| $100 | growing caps | ~$3,400 | $63 |
+| $200 | growing caps | ~$5,400 | $184 |
+
+A bootstrap of backtest days (5,000 paths, $100 start, $3 cap) gives:
+
+| horizon | median | 10th percentile | 90th percentile |
+|---|---|---|---|
+| day 30 | ~$1,000 | ~$435 | ~$1,560 |
+| day 56 | ~$1,900 | ~$1,200 | ~$2,670 |
+
+- P(bankroll ever < $20) ≈ 1%.
+- P(below $100 after 30 days) ≈ 1.6%.
+
+These all assume the backtest edge holds live, which is not yet confirmed.
+
 ## 3. Jev + LLM
 
 - **Jev as a rules guard** (`live/rules_guard.py`). Before trading an event, Jev answers typed questions about its rules
