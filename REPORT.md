@@ -158,6 +158,22 @@ for about 30% more capacity and is not yet in the live bot.
   - By region: Asia +$356 (+$37 ex-outlier); Europe **+$20 on $114 (+18%)**.
   - Still pending: 25 fills (US and Sep 27). Open marks show Denver 84–85°F YES at −$52 and the São Paulo stale trade at −$31.
   - The stale-data guard has not triggered yet.
+- **2026-09-27 10:00 UTC: first full day (Sep 26 events, all regions).**
+  - 66 fills / 19 events decided: cost $434, P&L **+$322 (+74%)**, win rate 41%.
+  - Excluding the single Chengdu 28°C trade (+$317): **+$4.6 on $403 (+1.1%)**, i.e. roughly break-even.
+  - By region:
+
+    | region | P&L |
+    |---|---|
+    | Asia | +$356 (+$39 ex-outlier) |
+    | Europe | +$20 (+18%) |
+    | Americas | **−$54 (−32%)** |
+
+  - Americas detail:
+    - Denver 84–85°F YES averaged in at ~0.11 up to the $50 cap and lost $52; the neighbouring 82–83°F YES won +$43.
+    - The São Paulo stale-data trade lost $31.5. That failure mode is now guarded.
+  - Assessment: one day is far inside backtest noise (daily std $434 vs mean $227), so this neither confirms nor refutes
+    the +8.5% expectation. Plan: 2–4 weeks of paper results before real money.
 - **Infrastructure caveat.** This cloud container is reclaimed when the session is idle, which stops the bot.
   `live/ensure_running.sh` restarts it; for continuous operation run the bot on your own always-on machine or VPS.
 
