@@ -9,6 +9,7 @@ from train_nowcast import prep, FEATS, KMAX
 from bt_nowcast import bucket_probs
 
 SPLIT = os.environ.get('SPLIT', '2026-08-15')
+REF_LAG = float(os.environ.get('REF_LAG', 0))   # seconds of trade-feed lag: ref/age/n1h only see prints older than this
 
 
 def build():
@@ -44,7 +45,7 @@ def build():
                 if tr is None:
                     continue
                 ts = tr.ts.values; py = tr.pyes.values
-                idx = np.searchsorted(ts, g.t.values, side='right') - 1
+                idx = np.searchsorted(ts, g.t.values - REF_LAG, side='right') - 1
                 ok = idx >= 0
                 refs[ok, j] = py[idx[ok]]; ages[ok, j] = (g.t.values[ok] - ts[idx[ok]]) / 60
                 n1h[:, j] = idx + 1 - np.searchsorted(ts, g.t.values - 3600, side='right')

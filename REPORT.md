@@ -1,5 +1,35 @@
 # Polymarket edge hunt: findings (2026-09-26)
 
+> **CORRECTION, 2026-09-27 20:00 UTC: the headline numbers below are NOT achievable live. Do not trade real money on them.**
+>
+> The print-based backtest fills a buy only when **another taker bought in the same direction** at a price at or below
+> fair − edge. That selects the moments when informed traders agree with the model. A real bot that takes the displayed
+> ask whenever it looks cheap also buys when informed sellers are pushing the price down.
+>
+> Re-running the same 56-day walk-forward with fills on *any* trade print, paying the real spread, gives:
+>
+> | fill model (same signals, Aug 1 – Sep 25) | return on turnover | P&L/day | positive days |
+> |---|---|---|---|
+> | follow same-direction takers (original backtest) | +8.5% | +$227 | 68% |
+> | any print, +1¢ spread | +0.6% | +$43 | 45% |
+> | any print, **+3¢ (median recorded spread)** | **−7.1%** | **−$489** | 23% |
+> | only opposite-direction prints, +1¢ | −1.4% | −$86 | 38% |
+>
+> Independent checks agree:
+> - **Live paper bot:** −6.6% on turnover, excluding one outlier.
+> - **Recorded order books** (~8.5 h, Sep 26–27): taking the displayed ask on the same signals returned −29.5%, against
+>   +4.6% for print fills.
+> - **Following a qualifying print within 30–90 s** at the then-current ask: −10% to −16%.
+>
+> The daily-low segment looked robust at +25–28%, but most of that came from Manila and deep longshots. Excluding the
+> unreliable cities, it returns +4.8% at a 3¢ spread (−1.7% ex-top-5 events) and −6.2% at 5¢.
+>
+> **Verdict:** no demonstrated executable edge; the strategy is on hold. The $100 bankroll projections further down are
+> void. Section 2's "Live paper-trading log" has the details. Tools: `bt_stack.py FILLMODE/PEN`, `bt_book.py`,
+> `bt_follow.py`, `forward_replay.sh`.
+
+## Original summary (superseded by the correction above)
+
 **Bottom line.** The best edge found that is robust, executable and not speed-dependent is **weather temperature
 nowcasting**. A model combines the market's last traded price with a nowcast of the day's max/min built from live airport
 METAR observations. It trades only visible liquidity (taker, fill-and-kill at the displayed ask), minutes to hours after
@@ -183,6 +213,34 @@ for about 30% more capacity and is not yet in the live bot.
     replay as blocked.
   - Cost: blackout covers ~37% of the time for half-hourly stations and ~18% for hourly ones, but only for those
     extreme quotes. Upper-bound cost is ~15% of backtest profit; worth it to avoid stale-data picks.
+- **2026-09-27 18:30–20:00 UTC check-in: live-vs-backtest gap diagnosed; the edge does not survive realistic fills.**
+  - **Downtime.** The bot was down from 10:28 to 18:33 UTC because the container was reclaimed, so the blackout guard
+    had only ~4 min of live time and `guard_skip.jsonl` is still empty. The two Tel Aviv 30°C NO fills at 0.06
+    (10:22–10:23) came just before the guard went live and are marked at −$21.
+  - **Decided v2 paper trades.** 73 fills over 24 events, +$283 on $544.
+    - Excluding Chengdu 28°C: **−$34 on $513 (−6.6%)**.
+    - Sep 27 Asia so far: −$38, mostly one Wuhan "25°C or below" YES at 0.49, bought at 02:30 local time, −$51.
+    - A 24-event sample this bad occurs in 26% of backtest bootstraps, so on its own it would still be noise.
+  - **Forward replay** (`research/weather/forward_replay.sh`): the frozen production model on Sep 26–27, every city and
+    hour, same print-fill rules as the backtest.
+    - 78 events: +$731 on $3,178 (+23%); +17.5% excluding the top event.
+    - On the 23 events the live bot also traded: replay +$296 on $1,094; live +$283 on $544.
+  - **Parity diff at the 73 live fill times** (archive recompute):
+    - Nowcast inputs (`run`, `q`) match exactly: 0 mismatches.
+    - The market's last print (`ref`/`age`) was stale in 45 of 73 fills.
+  - **Cause of the stale prints:**
+    - data-api `/trades` sends `Cache-Control: public, max-age=300`, and Cloudflare served the bot's repeated URLs
+      from cache.
+    - data-api also ingests trades a median of ~2 min late (p90 ~4.5 min).
+    - Fixed with a cache-busting parameter. The CLOB websocket (`last_trade_price`) delivers trades in ~0.1 s for a
+      future live feed.
+    - The backtest is insensitive to feed lag: `REF_LAG` of 0, 90 and 300 s gives +8.5%, +8.1% and +8.4%. Stale prints
+      are therefore not what separates live from backtest.
+  - **Root cause: the fill model.** Fills only alongside same-direction taker prints were the source of the edge; see
+    the correction at the top of this report. Taking the displayed ask with a realistic 3¢ spread gives −7.1%, which
+    matches the live −6.6%. Recorded books and a 30–90 s print-follower on real books are also negative.
+  - **Decision.** Strategy on hold; no real money. The paper bot keeps running: its `signals.jsonl` records model fair
+    value plus top-of-book every minute, which is the book-based dataset any future variant must be tested on.
 - **Infrastructure caveat.** This cloud container is reclaimed when the session is idle, which stops the bot.
   `live/ensure_running.sh` restarts it; for continuous operation run the bot on your own always-on machine or VPS.
 
@@ -245,6 +303,9 @@ A bootstrap of backtest days (5,000 paths, $100 start, $3 cap) gives:
 - P(below $100 after 30 days) ≈ 1.6%.
 
 These all assume the backtest edge holds live, which is not yet confirmed.
+
+> **VOID (2026-09-27):** these projections inherit the print-fill bias described in the correction at the top. Under
+> realistic fills the expected return is about zero or negative, so a $100 start would most likely shrink, not grow.
 
 ## 3. Jev + LLM
 

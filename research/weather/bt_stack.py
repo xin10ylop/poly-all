@@ -7,6 +7,10 @@ from wlib import load_wtrades
 EDGE = float(os.environ.get('EDGE', 0.05)); DELAY = float(os.environ.get('DELAY', 300)); WIN = float(os.environ.get('WIN', 1800))
 SHARE = float(os.environ.get('SHARE', 0.5)); MAXUSD = float(os.environ.get('MAXUSD', 50)); FEE = 0.05
 PMIN = float(os.environ.get('PMIN', 0.02)); PMAX = float(os.environ.get('PMAX', 0.98))
+# FILLMODE: 'follow' (default) = fill only alongside a same-direction taker print at <= fair-EDGE;
+# 'any' = also fill on opposite-direction prints (a seller hitting the bid), paying that price + PEN (spread proxy);
+# 'against' = ONLY opposite-direction prints (+PEN): the moments a displayed-ask taker gets that the default skips
+FILLMODE = os.environ.get('FILLMODE', 'follow'); PEN = float(os.environ.get('PEN', 0.01))
 te = pd.read_parquet(os.environ.get('TEST', 'data/stack_test.parquet'))
 W = load_wtrades()
 W = W[W.cid.isin(set(te.cid))]
@@ -26,11 +30,11 @@ for (slug, j), g in te.groupby(['slug', 'j'], sort=False):
             for side in ('YES', 'NO'):
                 if spent[side] >= MAXUSD:
                     continue
-                if side == 'YES' and yb[i] and py[i] <= r.p - EDGE:
-                    px = py[i]
-                elif side == 'NO' and (not yb[i]) and (1 - py[i]) <= (1 - r.p) - EDGE:
-                    px = 1 - py[i]
-                else:
+                same = bool(yb[i]) if side == 'YES' else not yb[i]
+                if (FILLMODE == 'follow' and not same) or (FILLMODE == 'against' and same):
+                    continue
+                px = (py[i] if side == 'YES' else 1 - py[i]) + (0 if same else PEN)
+                if px > (r.p if side == 'YES' else 1 - r.p) - EDGE:
                     continue
                 if px < PMIN or px > PMAX:
                     continue

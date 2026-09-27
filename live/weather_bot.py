@@ -160,7 +160,9 @@ def update_prints(cids):
     cids = list(cids)
     for i in range(0, len(cids), 30):
         try:
-            r = get(f'{DATA}/trades', {'market': ','.join(cids[i:i + 30]), 'limit': 500})
+            # unique '_' defeats the Cloudflare cache (data-api sends Cache-Control: max-age=300); without it the
+            # bot saw prints up to ~5 min stale, a parity break vs the backtest's archive-based ref/age/n1h
+            r = get(f'{DATA}/trades', {'market': ','.join(cids[i:i + 30]), 'limit': 500, '_': time.time_ns()})
         except Exception:
             continue
         for x in r:
