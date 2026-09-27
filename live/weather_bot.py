@@ -132,7 +132,15 @@ def obs_overdue(icao, now):
         return True
     gaps = [b - a for a, b in zip(ts[-7:], ts[-6:])]
     interval = sorted(gaps)[len(gaps) // 2]
-    return now - ts[-1] >= interval - 60
+    return now - ts[-1] >= interval - 360   # METARs are often published a few minutes BEFORE their nominal time
+
+
+def in_blackout(icao, now, lat=300):
+    """True while the market may know an observation our model does not use yet:
+    (a) a newer METAR is probably published but not in our feed (reporting interval elapsed), or
+    (b) we hold an observation younger than the model's 5-min availability lag (kept for backtest parity)."""
+    ts = sorted(METAR.get(icao, {}))
+    return obs_overdue(icao, now) or (bool(ts) and ts[-1] + lat > now)
 
 
 def metar_frame(icao, unit):
@@ -231,8 +239,8 @@ def step(U):
             px, depth = a
             fair = p if side == 'YES' else 1 - p
             ref_side = row['ref'] if side == 'YES' else 1 - row['ref']
-            if ref_side - px > 0.5 and fair - px >= EDGE and obs_overdue(u['icao'], now):
-                # price far better than the last trade while a newer METAR is probably out -> likely stale data
+            if ref_side - px > 0.25 and fair - px >= EDGE and in_blackout(u['icao'], now):
+                # quote far better than the last trade while the market may know an obs our model does not -> skip
                 log('guard_skip.jsonl', dict(ts=now, slug=u['slug'], bucket=b['title'], side=side, px=px, fair=fair, ref=row['ref']))
                 continue
             key = f"{b['cid']}|{side}"

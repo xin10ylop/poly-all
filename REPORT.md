@@ -174,6 +174,15 @@ for about 30% more capacity and is not yet in the live bot.
     - The São Paulo stale-data trade lost $31.5. That failure mode is now guarded.
   - Assessment: one day is far inside backtest noise (daily std $434 vs mean $227), so this neither confirms nor refutes
     the +8.5% expectation. Plan: 2–4 weeks of paper results before real money.
+- **2026-09-27 10:40 UTC: second stale-data trade, guard reworked.**
+  - What happened: Tel Aviv 30°C NO at 0.06 was bought 2 s after the 30°C METAR was published.
+  - Root cause: the model intentionally ignores observations for 5 min (backtest parity), while the market prices
+    them within seconds. São Paulo was similar, but that METAR was published before its nominal time.
+  - New rule: a per-station **blackout window** from ~6 min before the next expected observation until the model
+    has used the new one. Inside it, the bot skips quotes > 25 points better than the last trade. Both failures
+    replay as blocked.
+  - Cost: blackout covers ~37% of the time for half-hourly stations and ~18% for hourly ones, but only for those
+    extreme quotes. Upper-bound cost is ~15% of backtest profit; worth it to avoid stale-data picks.
 - **Infrastructure caveat.** This cloud container is reclaimed when the session is idle, which stops the bot.
   `live/ensure_running.sh` restarts it; for continuous operation run the bot on your own always-on machine or VPS.
 
