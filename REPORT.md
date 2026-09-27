@@ -152,6 +152,12 @@ for about 30% more capacity and is not yet in the live bot.
     - the price is > 50 points better than the last trade;
     - the station's reporting interval has elapsed since our last observation (a newer METAR is probably out).
   - Skips are logged to `guard_skip.jsonl`. Upper-bound cost is about 9% of backtest profit; in practice much less.
+- **2026-09-27 03:00 UTC: Asia + Europe Sep 26 decided** (closed, or oracle-proposed and pinned).
+  - All decided: 45 fills / 13 events, cost $265, P&L **+$376**.
+  - Excluding the Chengdu 28°C outlier: **+$59 on $233 (+25%)**, win rate 50%.
+  - By region: Asia +$356 (+$37 ex-outlier); Europe **+$20 on $114 (+18%)**.
+  - Still pending: 25 fills (US and Sep 27). Open marks show Denver 84–85°F YES at −$52 and the São Paulo stale trade at −$31.
+  - The stale-data guard has not triggered yet.
 - **Infrastructure caveat.** This cloud container is reclaimed when the session is idle, which stops the bot.
   `live/ensure_running.sh` restarts it; for continuous operation run the bot on your own always-on machine or VPS.
 
